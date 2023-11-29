@@ -12,11 +12,12 @@ processed_data = clean_data(unprocessed_data)
 
 
 #If this is the first time you run the program, activate this block of code
-import nltk
+#import nltk
 #nltk.download('vader_lexicon')
 #nltk.download('stopwords')
+data = clean_stopwords(processed_data)
 
-data = calc_sentyment_polarity_from_dataset(processed_data, "Preprocessed_Text")
+VADER_model(data)
 
-train_model(data)
+Naive_Bayes_TF_IDF_model(data)
 
