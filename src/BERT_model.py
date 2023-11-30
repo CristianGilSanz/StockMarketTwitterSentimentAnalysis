@@ -11,101 +11,136 @@ import numpy as np
 
 
 def BERT_model(data):
-    #Split the training and test data into 80/20 split
-    train_pct = .8
+    # Split the training and test data into 80/20 split
+    train_percentage = 0.8
     np.random.seed(1)
-    idx = np.random.permutation(len(data))
+    # Shuffling of indices to randomize the order of data samples during tasks such as dataset splitting or batch
+    # processing, promoting better model training and generalization
+    indices = np.random.permutation(len(data))
 
-    X_train = data['Preprocessed_Text_No_Stopwords'].values[idx[:int(train_pct * len(data))]]
-    y_train = data['Sentiment'].values[idx[:int(train_pct * len(data))]]
-    y_train[y_train == -1] = 0
+    # Select the first 80% of indices for training
+    train_indices = indices[:int(train_percentage * len(data))]
+    # Select the remaining 20% of indices for testing
+    test_indices = indices[int(train_percentage * len(data)):]
 
-    X_test = data['Preprocessed_Text_No_Stopwords'].values[idx[int(train_pct * len(data)):]]
-    y_test = data['Sentiment'].values[idx[int(train_pct * len(data)):]]
-    y_test[y_test == -1] = 0
+    # Extract preprocessed text and sentiment labels for the training set
+    train_texts = data['Preprocessed_Text_No_Stopwords'].values[train_indices]
+    # Labels are the desired prediction or classification for each corresponding input.
+    train_labels = data['Sentiment'].values[train_indices]
+    # To adhere to a more standard convention where classes are typically numbered starting from 0,
+    # we replace any -1 sentiment labels with 0
+    train_labels[train_labels == -1] = 0
 
-    #Prepare the Bert NLP model tokenizer to encode tweets
+    # Extract preprocessed text and sentiment labels for the test set
+    test_texts = data['Preprocessed_Text_No_Stopwords'].values[test_indices]
+    test_labels = data['Sentiment'].values[test_indices]
+    # Replace any -1 sentiment labels with 0
+    test_labels[test_labels == -1] = 0
+
+    # Prepare the BERT NLP model tokenizer to encode tweets. It is a crucial component for converting raw textual data
+    # into a format that can be understood and processed by the BERT.
+
+    # This line initializes the BERT tokenizer and sets its configuration,
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
     # Use this to determine max length for encoding, (48)
-    encoded = [tokenizer.encode(sent, add_special_tokens=True) for sent in data['Preprocessed_Text_No_Stopwords'].values]
-    MAX_LEN = max([len(sent) for sent in encoded])
-    print('Max length: ', MAX_LEN)
+    """
+    encoded_texts = [tokenizer.encode(sent, add_special_tokens=True) for sent in train_texts]
+    max_length = max([len(sent) for sent in encoded_texts])
+    print('Max length: ', max_length)
+    """
 
-    #Encode training dataset for BERT
+    # Encode TRAINING dataset for BERT.
 
-    X_train_inputs = []
-    X_train_masks = []
+    # BERT requires input sequences to be converted into numerical representations. Each token in the sequence is mapped
+    # to a unique index in the model's vocabulary.
+    train_inputs = []
 
-    #For each tweet (train)
-    for line in X_train:
-        # encode the data. Return input encoding and attention mask
+    #BERT employs attention mechanisms to focus on specific parts of the input sequence. The attention mask indicates
+    #which tokens the model should pay attention to and which ones to ignore.
+    train_masks = []
+
+    # For each tweet (train)
+    for text in train_texts:
+        # Encode the data. Return input encoding and attention mask
+
+        # Tokenization is the process of breaking down the input text into smaller units (tokens).
+        # Here, the tokenizer.encode_plus tokenizes the input text (text) using the previously initialized tokenizer.
         encoding = tokenizer.encode_plus(
-            text=line,  # data to process
-            add_special_tokens=True,  # adds special chars [CLS] and [SEP] to encoding
-            padding='max_length',  # pad the tweets with 0s to fit max length
-            max_length=48,  # assign max length
-            truncation=True,  # truncate tweets longer than max length
-            return_tensors="pt",  # return tensor as pytorch tensor
-            return_attention_mask=True  # return the attention mask
+            text=text,
+            add_special_tokens=True,
+            padding='max_length',
+            max_length=48,
+            truncation=True,
+            return_tensors="pt",
+            return_attention_mask=True
         )
 
-        # add the encodings to the list
-        X_train_inputs.append(encoding.get('input_ids'))
-        X_train_masks.append(encoding.get('attention_mask'))
+        # Add the encodings to the list
+        train_inputs.append(encoding.get('input_ids'))
+        train_masks.append(encoding.get('attention_mask'))
 
     #Return the lists as tensors
-    X_train_inputs = torch.concat(X_train_inputs)
-    X_train_masks = torch.concat(X_train_masks)
 
+    # In PyTorch, a tensor is a fundamental data structure representing multi-dimensional arrays. Tensors can be scalars,
+    # vectors, matrices, or even higher-dimensional arrays.
 
-    #Encode testing dataset for BERT
-    X_test_inputs = []
-    X_test_masks = []
+    # Neural networks, including models like BERT, are designed to operate on tensor data. Tensors provide a convenient
+    # and efficient way to represent and manipulate numerical data, making them suitable for deep learning tasks.
+    train_inputs = torch.cat(train_inputs)
+    train_masks = torch.cat(train_masks)
 
-    #For each tweet (test)
-    for line in X_test:
-        # encode the data. Return input encoding and attention mask
+    # Encode TESTING dataset for BERT
+    test_inputs = []
+    test_masks = []
+
+    # For each tweet (test)
+    for text in test_texts:
+        # Encode the data. Return input encoding and attention mask
+
+        # Tokenization and encoding process similar to the training set
         encoding = tokenizer.encode_plus(
-            text=line,  # data to process
-            add_special_tokens=True,  # adds special chars [CLS] and [SEP] to encoding
-            padding='max_length',  # pad the tweets with 0s to fit max length
-            max_length=48,  # assign max length
-            truncation=True,  # truncate tweets longer than max length
-            return_tensors="pt",  # return tensor as pytorch tensor
-            return_attention_mask=True  # return the attention mask
+            text=text,
+            add_special_tokens=True,
+            padding='max_length',
+            max_length=48,
+            truncation=True,
+            return_tensors="pt",
+            return_attention_mask=True
         )
 
-        # add the encodings to the list
-        X_test_inputs.append(encoding.get('input_ids'))
-        X_test_masks.append(encoding.get('attention_mask'))
+        # Add the encodings to the list
+        test_inputs.append(encoding.get('input_ids'))
+        test_masks.append(encoding.get('attention_mask'))
 
-    #Return the lists as tensors
-    X_test_inputs = torch.concat(X_test_inputs)
-    X_test_masks = torch.concat(X_test_masks)
+    # Return the lists as tensors
+    test_inputs = torch.cat(test_inputs)
+    test_masks = torch.cat(test_masks)
 
+    # Get the train and test labels
+    train_labels = torch.tensor(train_labels)
+    test_labels = torch.tensor(test_labels)
 
-    #Get the train and test labels
-    y_train_labels = torch.tensor(y_train)
-    y_test_labels = torch.tensor(y_test)
-
-    print(X_train_inputs.shape, X_train_masks.shape, y_train_labels.shape)
-    print(X_test_inputs.shape, X_test_masks.shape, y_test_labels.shape)
-
-    #Set batch size to 16. recommended 16 or 32 depending on GPU size
+    #  Set the number of training examples utilized in one iteration. The model's weights are updated once per batch.
     batch_size = 16
 
-    #Randomize the train data and define dataloader for model training
-    train_data = TensorDataset(X_train_inputs, X_train_masks, y_train_labels)
+    # Randomize the train data and define dataloader for model TRAINING.
+
+    # TensorDataset allows you to create a dataset from a sequence of tensors.
+    train_data = TensorDataset(train_inputs, train_masks, train_labels)
+    # SequentialSampler generates random indices for sampling elements from a dataset.
     train_sampler = RandomSampler(train_data)
+    # DataLoader is an utility that creates an iterable over a dataset for iterating through batches.
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
 
-    #Randomize the test data and define dataloader for model testing
-    test_data = TensorDataset(X_test_inputs, X_test_masks, y_test_labels)
+    # Randomize the test data and define dataloader for model TESTING
+
+    test_data = TensorDataset(test_inputs, test_masks, test_labels)
     test_sampler = SequentialSampler(test_data)
     test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size)
 
-    #Set random seed for repeatability
+    # Set random seed for repeatability. This don't directly generate random numbers, they ensure that the sequence of
+    # random numbers generated by these libraries is the same every time the code is executed.
     torch.manual_seed(1)
     torch.cuda.manual_seed_all(1)
     np.random.seed(1)
@@ -116,38 +151,42 @@ def BERT_model(data):
     else:
         device = torch.device('cpu')
 
-    # Initialize Bert Classifier
+    # Initialize BERT Classifier
     model = BertClassifier(freeze=False)
 
     # Send model to device (GPU if available)
     model.to(device)
 
     # Define model hyperparameters
+
+    # Specifies the number of times the entire training dataset is processed by the model during training
     epochs = 4
+    # Determines the total number of iterations the model will undergo for weight updates
     steps = len(train_dataloader) * epochs
+    # Controls the step size during optimization, influencing the size of the weight updates
     learning_rate = 5e-5
+    # Small constant added to the denominator of some expressions to prevent division by zero
     epsilon = 1e-8
-
-    # Define Adam optimizer
+    # Initializes the optimizer, which is responsible for updating the model's weights during training
     optimizer = AdamW(model.parameters(), lr=learning_rate, eps=epsilon)
-
-    # Define scheduler for training the optimizer
+    # Control how the learning rate changes over time.
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=steps)
-
-    # Define cross entropy loss function
+    # Calculate the difference between the model's predictions and the actual labels during training.
     loss_function = nn.CrossEntropyLoss()
 
+    print("BERT Model Accuracy:")
+
     # For the number of epochs
-    for e in range(epochs):
+    for epoch in range(epochs):
         # Assign model to train
         model.train()
 
-        # Intialize loss to zero
+        # Initialize loss to zero
         train_loss = 0
 
-        # For each batch
+        # For each TRAINING batch
         for batch in train_dataloader:
-            # Get batch inputs, masks and labels
+            # Get batch inputs, masks, and labels
             batch_inputs, batch_masks, batch_labels = batch
 
             # Send variables to device (GPU if available)
@@ -158,65 +197,65 @@ def BERT_model(data):
             # Reset the model gradient
             model.zero_grad()
 
-            #Get classification of encoded values
+            # Get classification of encoded values
             logits = model(batch_inputs, batch_masks)
 
-            #Calculate loss based on predictions and known values
+            # Calculate loss based on predictions and known values
             loss = loss_function(logits, batch_labels)
 
-            #Add loss to the running total
+            # Add loss to the running total
             train_loss += loss.item()
 
-            #Update the model weights based on the loss
+            # Update the model weights based on the loss
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
 
-        #Calculate the average loss over batch
+        # Calculate the average loss over the batch
         train_loss /= len(train_dataloader)
 
-        #Assign the model to evaluate
+        # Assign the model to evaluate
         model.eval()
 
-        #Initialize losses
+        # Initialize losses
         test_loss = 0
-        test_acc = 0
+        test_accuracy = 0
 
-        #For each batch
+        # For each TESTING batch
         for batch in test_dataloader:
-            #Get encoding inputs, masks and labels
+            # Get encoding inputs, masks, and labels
             batch_inputs, batch_masks, batch_labels = batch
 
-            #Send variables to device (GPU if available)
+            # Send variables to device (GPU if available)
             batch_inputs = batch_inputs.to(device)
             batch_masks = batch_masks.to(device)
             batch_labels = batch_labels.to(device)
 
-            #Predict the input values without updating the model
+            # Predict the input values without updating the model
             with torch.no_grad():
                 logits = model(batch_inputs, batch_masks)
 
-            #Calculate the loss
+            # Calculate the loss
             loss = loss_function(logits, batch_labels)
             test_loss += loss.item()
 
-            #Convert predictions to 0 and 1
-            preds = torch.argmax(logits, dim=1).flatten()
+            # Convert predictions to 0 and 1
+            predictions = torch.argmax(logits, dim=1).flatten()
 
-            #Calculate accuracy of model on test data
-            accuracy = (preds == batch_labels).cpu().numpy().mean() * 100
-            test_acc += accuracy
+            # Calculate accuracy of the model on test data
+            accuracy = (predictions == batch_labels).cpu().numpy().mean() * 100
+            test_accuracy += accuracy
 
-        #Calculate average loss and accuracy per each batch
+        # Calculate average loss and accuracy per each batch
         test_loss /= len(test_dataloader)
-        test_acc /= len(test_dataloader)
+        test_accuracy /= len(test_dataloader)
 
-        #Print epoch information
-        print('Epoch: %d  |  Train Loss: %1.5f  |  Test Loss: %1.5f  |  Test Accuracy: %1.2f' % (
-        e + 1, train_loss, test_loss, test_acc))
+        # Print epoch information
+        print('\t Epoch: %d  |  Train Loss: %1.5f  |  Test Loss: %1.5f  |  Test Accuracy: %1.2f' % (
+            epoch + 1, train_loss, test_loss, test_accuracy))
 
-    #Save model
+    # Save model
     torch.save(model.state_dict(), '../outputs/stock_sentiment_model.pt')
 
 

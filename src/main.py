@@ -4,6 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 from sentiment_data_cleaner import *
 from VADER_model import *
 from Naive_Bayes_TF_IDF_model import *
+from BERT_model import *
 
 unprocessed_data = load_data("../data/stock_twitter_sentiment_scores.csv")
 
@@ -22,5 +23,5 @@ VADER_model(data)
 
 Naive_Bayes_TF_IDF_model(data)
 
-#BERT_model(data)
+BERT_model(data)
 
