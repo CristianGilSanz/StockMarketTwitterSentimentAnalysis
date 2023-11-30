@@ -1,35 +1,9 @@
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 
 import matplotlib.pyplot as plt
-
 import numpy as np
-
-def clean_stopwords(data):
-    stop_words = set([s.replace("'", '') for s in stopwords.words('english') if s not in ['not', 'up', 'down', 'above', 'below', 'under', 'over']])
-
-    data['Preprocessed_Text_No_Stopwords'] = data['Preprocessed_Text'].apply(lambda s: " ".join([word for word in s.split() if word not in stop_words]))
-    data['Preprocessed_Text_No_Stopwords'] = data['Preprocessed_Text_No_Stopwords'].str.strip()
-
-    return data
-
-def VADER_model(data):
-    #Create an instance of the sentiment analyzer
-    sid = SentimentIntensityAnalyzer()
-
-    #Assign a polarity score to each tweet
-    data['Sentiment_Polarity_Score'] = data["Preprocessed_Text"].apply(lambda score: sid.polarity_scores(score)['compound'])
-    data['Rounded_Predicted_Score'] = data['Sentiment_Polarity_Score'].apply(lambda score: 1 if score >=0 else -1)
-
-    #Calculate the accuracy of the sentiment analyzer
-    correct_predictions = (data['Sentiment'] == data['Rounded_Predicted_Score']).sum()
-    accuracy = (correct_predictions / len(data)) * 100
-
-    print('VADER Model Accuracy:', round(accuracy, 2), '%', '\n')
 
 def Naive_Bayes_TF_IDF_model(data):
     #Split data into training and test sets (80/20)
@@ -61,7 +35,7 @@ def Naive_Bayes_TF_IDF_model(data):
     X_test_tfidf = tfidf_vectorizer.transform(test_texts)
 
     #Initialize models with multiple alpha values to find the best model
-    alpha_values = np.arange(1, 10, 0.1)
+    alpha_values = np.arange(0.01, 10, 0.01)
     naive_bayes_models = [MultinomialNB(alpha=alpha) for alpha in alpha_values]
 
     #Find the best model using cross-validation
@@ -70,9 +44,6 @@ def Naive_Bayes_TF_IDF_model(data):
                       in naive_bayes_models]
     auc_roc_scores = np.array(auc_roc_scores)
 
-    #Get the alpha value that produces the best performance
-    best_alpha = round(alpha_values[auc_roc_scores.argmax()], 1)
-
     #Plot accuracies for different alpha values
     plt.figure(figsize=(15, 7))
     plt.plot(alpha_values, auc_roc_scores)
@@ -80,6 +51,9 @@ def Naive_Bayes_TF_IDF_model(data):
     plt.ylabel('AUC-ROC Score')
     plt.title('AUC-ROC Score for Different Alpha Values')
     plt.show()
+
+    #Get the alpha value that produces the best performance
+    best_alpha = round(alpha_values[auc_roc_scores.argmax()], 1)
 
     #Retrain the best model with the entire training set
     best_naive_bayes_model = MultinomialNB(alpha=best_alpha)

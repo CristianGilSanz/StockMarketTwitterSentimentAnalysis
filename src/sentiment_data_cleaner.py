@@ -1,3 +1,5 @@
+from nltk.corpus import stopwords
+
 import pandas
 
 def load_data(file):
@@ -19,7 +21,7 @@ def clean_data(data):
 
     ## FIX HYPERLINKS
     data['Preprocessed_Text'] = data['Preprocessed_Text'].replace(r'https?:\/\/.*[\r\n]*', ' ', regex=True)
-    data['Preprocessed_Text'] = data['Preprocessed_Text'].replace(r'www.*[\r\n]*', ' ', regex=True)
+    data['Preprocessed_Text']   = data['Preprocessed_Text'].replace(r'www.*[\r\n]*', ' ', regex=True)
     data['Preprocessed_Text'] = data['Preprocessed_Text'].str.replace('https', '', regex=False)
 
     ## FIX INDIVIDUAL SYMBOLS
@@ -225,5 +227,14 @@ def clean_data(data):
     ## FIX EXTRA SPACES AND ENDING PUNCTUATION
     data['Preprocessed_Text'] = data['Preprocessed_Text'].str.replace(' +', ' ', regex=True)
     data['Preprocessed_Text'] = data['Preprocessed_Text'].str.strip(' .!?,)(:-')
+
+    return data
+
+def clean_stopwords(data):
+
+    stop_words = set([s.replace("'", '') for s in stopwords.words('english') if s not in ['not', 'up', 'down', 'above', 'below', 'under', 'over']])
+
+    data['Preprocessed_Text_No_Stopwords'] = data['Preprocessed_Text'].apply(lambda s: " ".join([word for word in s.split() if word not in stop_words]))
+    data['Preprocessed_Text_No_Stopwords'] = data['Preprocessed_Text_No_Stopwords'].str.strip()
 
     return data
