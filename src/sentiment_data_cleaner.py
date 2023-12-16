@@ -4,7 +4,7 @@ import pandas
 
 def load_data(file):
     #Load stock_data
-    data = pandas.read_csv("../data/stock_twitter_sentiment_scores.csv")
+    data = pandas.read_csv(file)
 
     return data
 
